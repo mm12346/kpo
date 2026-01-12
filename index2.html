@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ระบบเลือกตั้งตัวแทนพนักงาน</title>
+    
+    <!-- CSS Framework & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons & Alerts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f0f2f5; -webkit-tap-highlight-color: transparent; }
+        
+        /* Safe Area for iPhone X+ */
+        .safe-pb { padding-bottom: env(safe-area-inset-bottom); }
+        
+        /* Custom Styles for Selection */
+        .candidate-card { 
+            transition: transform 0.2s, border-color 0.2s, background-color 0.2s; 
+            border: 2px solid transparent; 
+            touch-action: manipulation;
+        }
+        .candidate-card:active { transform: scale(0.98); background-color: #f9fafb; }
+        .candidate-card.selected { 
+            border-color: #2563eb; 
+            background-color: #eff6ff; 
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1), 0 2px 4px -1px rgba(37, 99, 235, 0.06);
+        }
+        .check-icon { opacity: 0; transition: opacity 0.2s; transform: scale(0.5); }
+        .candidate-card.selected .check-icon { opacity: 1; transform: scale(1); }
+
+        /* Loader */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-gray-50">
+
+    <!-- Navbar -->
+    <nav class="bg-blue-600 text-white shadow-md sticky top-0 z-40 safe-pt">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-vote-yea text-xl"></i>
+                <span class="text-lg font-bold">Company Vote</span>
+            </div>
+            <div id="user-badge" class="hidden text-xs bg-blue-700 bg-opacity-80 px-3 py-1.5 rounded-full items-center shadow-sm">
+                <i class="fas fa-user mr-1.5"></i><span id="display-empid" class="font-mono"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-6 max-w-lg md:max-w-5xl mb-24">
+        
+        <!-- View 1: Login Screen -->
+        <div id="view-login" class="flex flex-col items-center justify-center min-h-[70vh] fade-in">
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg w-full max-w-sm text-center border border-gray-100">
+                <div class="mb-6">
+                    <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-blue-50">
+                        <i class="fas fa-id-card text-2xl text-blue-600"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-800">เข้าสู่ระบบ</h2>
+                    <p class="text-gray-500 text-sm mt-1">กรอกรหัสพนักงานเพื่อเริ่มโหวต</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <!-- text-base prevents iOS zoom -->
+                    <input type="text" id="input-empid" 
+                           class="w-full px-4 py-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-center text-lg font-semibold tracking-wide placeholder-gray-400"
+                           placeholder="ระบุรหัสพนักงาน"
+                           inputmode="text"
+                           autocomplete="off"
+                           onkeypress="handleEnter(event)">
+                    
+                    <button onclick="login()" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3.5 rounded-xl transition shadow-md flex items-center justify-center space-x-2 touch-manipulation">
+                        <span>เข้าสู่ระบบ</span>
+                        <i class="fas fa-arrow-right text-sm"></i>
+                    </button>
+                </div>
+                <div class="mt-6 text-xs text-gray-400 bg-gray-50 py-2 rounded-lg">
+                    <i class="fas fa-info-circle mr-1"></i> 1 รหัสพนักงาน โหวตได้ 1 ครั้ง
+                </div>
+            </div>
+        </div>
+
+        <!-- View 2: Voting Screen -->
+        <div id="view-voting" class="hidden pb-safe">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">เลือกตัวแทน</h1>
+                <p class="text-sm text-gray-500 mt-1">แตะที่รายชื่อเพื่อเลือก (1 ท่าน)</p>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-spinner" class="flex flex-col items-center justify-center my-10 space-y-3">
+                <div class="loader"></div>
+                <p class="text-sm text-gray-400">กำลังโหลดรายชื่อ...</p>
+            </div>
+
+            <!-- Candidates Grid: Mobile = 1 col, Tablet/PC = Grid -->
+            <div id="candidates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
+                <!-- Javascript will inject content here -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Floating Submit Bar (Mobile Friendly) -->
+    <div id="submit-bar" class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] transform translate-y-full transition-transform duration-300 z-50 safe-pb">
+        <div class="container mx-auto px-4 py-3 md:py-4 flex flex-row justify-between items-center max-w-5xl">
+            <div class="flex flex-col pr-4 overflow-hidden">
+                <span class="text-xs text-gray-500">คุณเลือก:</span>
+                <div class="font-bold text-blue-600 text-base truncate" id="selected-name">None</div>
+            </div>
+            <button onclick="confirmVote()" 
+                    class="bg-green-600 active:bg-green-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-md transition whitespace-nowrap flex items-center">
+                <span>ยืนยัน</span>
+                <i class="fas fa-check ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // ⚙️ CONFIGURATION
+        // ==========================================
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0NQQ0oiDnVF3Xyw62c2evZyKanfKIF3THTezBcAoSqCQ5hNReyhqhK8amrZAKmFPtzA/exec"; 
+
+        // 💾 ข้อมูลจำลอง (Mock Data)
+        const MOCK_DATA = [
+            { id: 1, name: "นายสมชาย มุ่งมั่น", dept: "IT Support", img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" },
+            { id: 2, name: "นางสาววิไล ใจดี", dept: "HR Manager", img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka" },
+            { id: 3, name: "นายประดิษฐ์ คิดไว", dept: "Marketing", img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bob" },
+            { id: 4, name: "คุณสุดา พาเพลิน", dept: "Accounting", img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Suda" }
+        ];
+
+        // ==========================================
+        // 🧠 STATE MANAGEMENT
+        // ==========================================
+        let currentUser = null;
+        let selectedCandidate = null;
+        let candidatesData = [];
+
+        window.onload = () => {
+            if(!GOOGLE_SCRIPT_URL) {
+                console.warn("No Script URL provided. Running in Demo Mode.");
+            }
+        };
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') login();
+        }
+
+        // ==========================================
+        // 🔐 LOGIN LOGIC
+        // ==========================================
+        function login() {
+            const input = document.getElementById('input-empid');
+            const empId = input.value.trim().toUpperCase();
+
+            // Mobile-friendly alert using native text rendering in Swal
+            if (!empId) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'กรุณากรอกรหัส',
+                    text: 'ช่องรหัสพนักงานห้ามว่าง',
+                    confirmButtonText: 'ตกลง',
+                    customClass: { confirmButton: 'bg-blue-600' }
+                });
+                return;
+            }
+
+            if (localStorage.getItem(`voted_${empId}`)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'คุณใช้สิทธิ์ไปแล้ว',
+                    text: 'ไม่สามารถโหวตซ้ำได้',
+                    confirmButtonText: 'ปิด'
+                });
+                return;
+            }
+
+            currentUser = empId;
+            document.getElementById('display-empid').innerText = currentUser;
+            
+            // Focus out to hide keyboard on mobile
+            input.blur();
+
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-voting').classList.remove('hidden');
+            document.getElementById('user-badge').classList.remove('hidden');
+            document.getElementById('user-badge').classList.add('flex');
+
+            loadCandidates();
+        }
+
+        // ==========================================
+        // 📡 DATA FETCHING
+        // ==========================================
+        async function loadCandidates() {
+            const spinner = document.getElementById('loading-spinner');
+
+            try {
+                if (GOOGLE_SCRIPT_URL) {
+                    const response = await fetch(GOOGLE_SCRIPT_URL);
+                    if (!response.ok) throw new Error("Network response was not ok");
+                    
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        candidatesData = result.data;
+                    } else {
+                        throw new Error(result.message);
+                    }
+                } else {
+                    await new Promise(r => setTimeout(r, 800));
+                    candidatesData = MOCK_DATA;
+                }
+            } catch (error) {
+                console.warn("Fetch Error encountered, switching to Mock Data:", error.message);
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'info',
+                    title: 'ใช้โหมดออฟไลน์ (ข้อมูลจำลอง)'
+                });
+                candidatesData = MOCK_DATA; 
+            } finally {
+                spinner.classList.add('hidden');
+                renderCandidates();
+            }
+        }
+
+        // ==========================================
+        // 🎨 UI RENDERING
+        // ==========================================
+        function renderCandidates() {
+            const grid = document.getElementById('candidates-grid');
+            grid.innerHTML = '';
+
+            candidatesData.forEach(c => {
+                const card = document.createElement('div');
+                // Mobile layout: Row (Image left, text right)
+                // Tablet/Desktop layout: Column (Image top, text bottom)
+                card.className = `candidate-card bg-white rounded-xl shadow-sm p-4 cursor-pointer relative overflow-hidden group flex md:flex-col items-center gap-4 md:gap-2`;
+                card.onclick = () => selectCandidate(c);
+                card.id = `card-${c.id}`;
+
+                const imgSrc = c.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random`;
+
+                card.innerHTML = `
+                    <div class="absolute top-2 right-2 check-icon text-blue-600 bg-blue-50 rounded-full p-1 z-10">
+                        <i class="fas fa-check-circle text-xl"></i>
+                    </div>
+                    
+                    <!-- Image Wrapper -->
+                    <div class="flex-shrink-0">
+                        <img src="${imgSrc}" alt="${c.name}" class="w-16 h-16 md:w-24 md:h-24 rounded-full object-cover border-2 border-white shadow-sm bg-gray-100">
+                    </div>
+                    
+                    <!-- Text Info -->
+                    <div class="flex-grow text-left md:text-center min-w-0">
+                        <h3 class="text-base md:text-lg font-bold text-gray-800 leading-tight truncate pr-6 md:pr-0">${c.name}</h3>
+                        <span class="inline-block mt-1 bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-md truncate max-w-full">${c.dept}</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function selectCandidate(candidate) {
+            selectedCandidate = candidate;
+            document.querySelectorAll('.candidate-card').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`card-${candidate.id}`).classList.add('selected');
+            
+            const bar = document.getElementById('submit-bar');
+            bar.classList.remove('translate-y-full');
+            document.getElementById('selected-name').innerText = candidate.name;
+        }
+
+        // ==========================================
+        // 🚀 SUBMIT VOTE
+        // ==========================================
+        function confirmVote() {
+            if (!selectedCandidate || !currentUser) return;
+
+            // Use simple confirm for mobile speed, or SweetAlert with better config
+            Swal.fire({
+                title: 'ยืนยัน?',
+                text: `คุณเลือก "${selectedCandidate.name}"`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#16a34a',
+                cancelButtonColor: '#9ca3af',
+                confirmButtonText: 'ใช่, โหวตเลย',
+                cancelButtonText: 'ยกเลิก',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    submitToBackend();
+                }
+            });
+        }
+
+        async function submitToBackend() {
+            Swal.fire({
+                title: 'กำลังบันทึก...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const payload = {
+                action: 'vote',
+                empId: currentUser,
+                candidateId: selectedCandidate.id
+            };
+
+            try {
+                if (GOOGLE_SCRIPT_URL) {
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        redirect: 'follow',
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        finishVoting(true);
+                    } else if (result.status === 'duplicate') {
+                        Swal.fire('ผิดพลาด', 'คุณเคยโหวตไปแล้ว', 'error');
+                    } else {
+                        throw new Error(result.message || 'Unknown error');
+                    }
+                } else {
+                    await new Promise(r => setTimeout(r, 1000));
+                    finishVoting(true);
+                }
+            } catch (error) {
+                console.error("Submit Error:", error);
+                if (GOOGLE_SCRIPT_URL) {
+                     Swal.fire('เชื่อมต่อไม่ได้', 'กรุณาลองใหม่อีกครั้ง', 'error');
+                } else {
+                    finishVoting(true); 
+                }
+            }
+        }
+
+        function finishVoting(success) {
+            if (success) {
+                localStorage.setItem(`voted_${currentUser}`, 'true');
+                
+                // Hide bottom bar
+                document.getElementById('submit-bar').classList.add('translate-y-full');
+                
+                const votingView = document.getElementById('view-voting');
+                votingView.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-16 px-4 fade-in text-center h-full">
+                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
+                            <i class="fas fa-check text-4xl text-green-600"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">บันทึกเรียบร้อย</h2>
+                        <p class="text-gray-600 mb-8">ขอบคุณสำหรับการโหวต</p>
+                        
+                        <div class="w-full max-w-xs bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-3 mx-auto">
+                            <img src="${selectedCandidate.img || 'https://via.placeholder.com/50'}" class="w-12 h-12 rounded-full bg-gray-200 object-cover">
+                            <div class="text-left overflow-hidden">
+                                <p class="text-sm text-gray-500">คุณเลือก</p>
+                                <p class="font-bold text-gray-800 truncate">${selectedCandidate.name}</p>
+                            </div>
+                        </div>
+
+                        <button onclick="location.reload()" class="mt-12 text-gray-500 hover:text-blue-600 transition text-sm flex items-center">
+                            <i class="fas fa-redo mr-2"></i> กลับหน้าหลัก
+                        </button>
+                    </div>
+                `;
+                
+                Swal.close();
+            }
+        }
+    </script>
+</body>
+</html>
