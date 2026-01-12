@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเลือกตั้งตัวแทนพนักงาน</title>
+    
+    <!-- CSS Framework & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons & Alerts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f0f2f5; }
+        
+        /* Custom Styles for Selection */
+        .candidate-card { transition: all 0.3s ease; border: 2px solid transparent; }
+        .candidate-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .candidate-card.selected { 
+            border-color: #2563eb; 
+            background-color: #eff6ff; 
+            transform: scale(1.02);
+        }
+        .check-icon { opacity: 0; transition: opacity 0.2s; }
+        .candidate-card.selected .check-icon { opacity: 1; }
+
+        /* Loader */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-vote-yea text-2xl"></i>
+                <span class="text-xl font-bold">Company Vote</span>
+            </div>
+            <div id="user-badge" class="hidden text-sm bg-blue-700 px-3 py-1 rounded-full">
+                <i class="fas fa-user mr-2"></i><span id="display-empid"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8 max-w-5xl">
+        
+        <!-- View 1: Login Screen -->
+        <div id="view-login" class="flex flex-col items-center justify-center min-h-[60vh] fade-in">
+            <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+                <div class="mb-6">
+                    <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-id-card text-3xl text-blue-600"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">เข้าสู่ระบบลงคะแนน</h2>
+                    <p class="text-gray-500 mt-2">กรุณากรอกรหัสพนักงานเพื่อใช้สิทธิ์</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <input type="text" id="input-empid" 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                           placeholder="ระบุรหัสพนักงาน (เช่น EMP001)"
+                           onkeypress="handleEnter(event)">
+                    
+                    <button onclick="login()" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-md hover:shadow-lg">
+                        เข้าสู่ระบบ
+                    </button>
+                </div>
+                <div class="mt-6 text-xs text-gray-400">
+                    * 1 รหัสพนักงาน สามารถโหวตได้ 1 ครั้งเท่านั้น
+                </div>
+            </div>
+        </div>
+
+        <!-- View 2: Voting Screen -->
+        <div id="view-voting" class="hidden">
+            <div class="text-center mb-10">
+                <h1 class="text-3xl font-bold text-gray-800">🗳️ เลือกตัวแทนที่คุณต้องการ</h1>
+                <p class="text-gray-600 mt-2">คลิกที่บัตรรายชื่อเพื่อเลือก (เลือกได้ 1 ท่าน)</p>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-spinner" class="flex justify-center my-20">
+                <div class="loader"></div>
+            </div>
+
+            <!-- Candidates Grid -->
+            <div id="candidates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Javascript will inject content here -->
+            </div>
+
+            <!-- Submit Button Area -->
+            <div class="fixed bottom-0 left-0 w-full bg-white border-t p-4 shadow-lg transform translate-y-full transition-transform duration-300 z-50" id="submit-bar">
+                <div class="container mx-auto flex justify-between items-center max-w-5xl">
+                    <div>
+                        <span class="text-gray-500 text-sm">คุณเลือก:</span>
+                        <div class="font-bold text-blue-600 text-lg" id="selected-name">None</div>
+                    </div>
+                    <button onclick="confirmVote()" 
+                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-8 rounded-full shadow-lg transition transform hover:scale-105">
+                        ยืนยันการโหวต <i class="fas fa-paper-plane ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm">
+        <p>© 2024 Employee Voting System. All rights reserved.</p>
+        <p id="system-status" class="text-xs mt-1 text-yellow-500"></p>
+    </footer>
+
+    <script>
+        // ==========================================
+        // ⚙️ CONFIGURATION
+        // ==========================================
+        // ⚠️ นำ URL จากการ Deploy Google Apps Script มาวางที่นี่
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0NQQ0oiDnVF3Xyw62c2evZyKanfKIF3THTezBcAoSqCQ5hNReyhqhK8amrZAKmFPtzA/exec"; 
+
+        // 💾 ข้อมูลจำลอง (Mock Data)
+        const MOCK_DATA = [
+            { }
+        ];
+
+        // ==========================================
+        // 🧠 STATE MANAGEMENT
+        // ==========================================
+        let currentUser = null;
+        let selectedCandidate = null;
+        let candidatesData = [];
+
+        window.onload = () => {
+            const statusEl = document.getElementById('system-status');
+            if(!GOOGLE_SCRIPT_URL) {
+                statusEl.innerText = "⚠️ Demo Mode: Data saved to LocalStorage (No Backend)";
+                console.warn("No Script URL provided. Running in Demo Mode.");
+            } else {
+                statusEl.innerText = "🟢 Connected to Server";
+            }
+        };
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') login();
+        }
+
+        // ==========================================
+        // 🔐 LOGIN LOGIC
+        // ==========================================
+        function login() {
+            const input = document.getElementById('input-empid');
+            const empId = input.value.trim().toUpperCase();
+
+            if (!empId) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'กรุณากรอกรหัส',
+                    text: 'ช่องรหัสพนักงานห้ามว่าง'
+                });
+                return;
+            }
+
+            if (localStorage.getItem(`voted_${empId}`)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'คุณใช้สิทธิ์ไปแล้ว',
+                    text: 'ระบบตรวจสอบพบประวัติการโหวตในเครื่องนี้'
+                });
+                return;
+            }
+
+            currentUser = empId;
+            document.getElementById('display-empid').innerText = currentUser;
+            
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-voting').classList.remove('hidden');
+            document.getElementById('user-badge').classList.remove('hidden');
+            document.getElementById('user-badge').classList.add('flex');
+
+            loadCandidates();
+        }
+
+        // ==========================================
+        // 📡 DATA FETCHING
+        // ==========================================
+        async function loadCandidates() {
+            const grid = document.getElementById('candidates-grid');
+            const spinner = document.getElementById('loading-spinner');
+
+            try {
+                if (GOOGLE_SCRIPT_URL) {
+                    const response = await fetch(GOOGLE_SCRIPT_URL);
+                    if (!response.ok) throw new Error("Network response was not ok");
+                    
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        candidatesData = result.data;
+                    } else {
+                        throw new Error(result.message);
+                    }
+                } else {
+                    console.log("Using Mock Data (Demo Mode)");
+                    await new Promise(r => setTimeout(r, 800));
+                    candidatesData = MOCK_DATA;
+                }
+            } catch (error) {
+                console.warn("Fetch Error encountered, switching to Mock Data:", error.message);
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'info',
+                    title: 'ไม่สามารถเชื่อมต่อ Server ได้ ระบบจะใช้ข้อมูลจำลองแทน'
+                });
+                candidatesData = MOCK_DATA; 
+            } finally {
+                spinner.classList.add('hidden');
+                renderCandidates();
+            }
+        }
+
+        // ==========================================
+        // 🎨 UI RENDERING
+        // ==========================================
+        function renderCandidates() {
+            const grid = document.getElementById('candidates-grid');
+            grid.innerHTML = '';
+
+            candidatesData.forEach(c => {
+                const card = document.createElement('div');
+                card.className = `candidate-card bg-white rounded-xl shadow-sm p-6 cursor-pointer relative overflow-hidden group`;
+                card.onclick = () => selectCandidate(c);
+                card.id = `card-${c.id}`;
+
+                const imgSrc = c.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random`;
+
+                card.innerHTML = `
+                    <div class="absolute top-4 right-4 check-icon text-blue-600 bg-blue-100 rounded-full p-1">
+                        <i class="fas fa-check-circle text-2xl"></i>
+                    </div>
+                    <div class="flex flex-col items-center text-center">
+                        <img src="${imgSrc}" alt="${c.name}" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md mb-4 group-hover:scale-105 transition-transform">
+                        <h3 class="text-xl font-bold text-gray-800 mb-1">${c.name}</h3>
+                        <span class="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full">${c.dept}</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function selectCandidate(candidate) {
+            selectedCandidate = candidate;
+            document.querySelectorAll('.candidate-card').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`card-${candidate.id}`).classList.add('selected');
+            const bar = document.getElementById('submit-bar');
+            bar.classList.remove('translate-y-full');
+            document.getElementById('selected-name').innerText = candidate.name;
+        }
+
+        // ==========================================
+        // 🚀 SUBMIT VOTE
+        // ==========================================
+        function confirmVote() {
+            if (!selectedCandidate || !currentUser) return;
+
+            Swal.fire({
+                title: 'ยืนยันการลงคะแนน?',
+                html: `คุณกำลังเลือก: <b>${selectedCandidate.name}</b><br>เมื่อยืนยันแล้วจะไม่สามารถแก้ไขได้`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#16a34a',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'ยืนยัน',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    submitToBackend();
+                }
+            });
+        }
+
+        async function submitToBackend() {
+            Swal.fire({
+                title: 'กำลังบันทึก...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            const payload = {
+                action: 'vote',
+                empId: currentUser,
+                candidateId: selectedCandidate.id
+            };
+
+            try {
+                if (GOOGLE_SCRIPT_URL) {
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        redirect: 'follow',
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        finishVoting(true);
+                    } else if (result.status === 'duplicate') {
+                        Swal.fire('เกิดข้อผิดพลาด', result.message, 'error');
+                    } else {
+                        throw new Error(result.message || 'Unknown error');
+                    }
+                } else {
+                    await new Promise(r => setTimeout(r, 1000));
+                    finishVoting(true);
+                }
+            } catch (error) {
+                console.error("Submit Error:", error);
+                if (GOOGLE_SCRIPT_URL) {
+                     Swal.fire('เชื่อมต่อ Server ไม่ได้', 'กรุณาตรวจสอบอินเทอร์เน็ต', 'error');
+                } else {
+                    finishVoting(true); 
+                }
+            }
+        }
+
+        function finishVoting(success) {
+            if (success) {
+                // Save local flag
+                localStorage.setItem(`voted_${currentUser}`, 'true');
+                
+                // 1. ซ่อน UI การโหวตเดิม (ปิดตัวเลือก)
+                document.getElementById('submit-bar').classList.add('translate-y-full'); // ซ่อนแถบยืนยันด้านล่าง
+                
+                // 2. เปลี่ยนหน้าจอเป็น "ขอบคุณ" โดยลบ Grid ทิ้ง
+                const votingView = document.getElementById('view-voting');
+                
+                votingView.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-20 fade-in text-center">
+                        <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
+                            <i class="fas fa-check text-5xl text-green-600"></i>
+                        </div>
+                        <h2 class="text-3xl font-bold text-gray-800 mb-2">บันทึกคะแนนเรียบร้อย</h2>
+                        <p class="text-gray-600 text-lg">ขอบคุณสำหรับการลงคะแนนของท่าน: <span class="font-bold text-blue-600">${currentUser}</span></p>
+                        
+                        <div class="mt-8 p-6 bg-white shadow-sm rounded-xl border border-gray-100 w-full max-w-sm mx-auto">
+                            <p class="text-sm text-gray-500 mb-2">ท่านได้เลือก:</p>
+                            <div class="flex items-center space-x-4">
+                                <img src="${selectedCandidate.img || 'https://via.placeholder.com/50'}" class="w-12 h-12 rounded-full bg-gray-200">
+                                <div class="text-left">
+                                    <p class="text-lg font-bold text-gray-800 leading-tight">${selectedCandidate.name}</p>
+                                    <p class="text-xs text-gray-500">${selectedCandidate.dept}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button onclick="location.reload()" class="mt-10 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition font-semibold flex items-center">
+                            <i class="fas fa-arrow-left mr-2"></i> กลับสู่หน้าหลัก
+                        </button>
+                    </div>
+                `;
+
+                // 3. แจ้งเตือนเล็กน้อย
+                Swal.fire({
+                    icon: 'success',
+                    title: 'สำเร็จ',
+                    text: 'บันทึกข้อมูลเรียบร้อยแล้ว',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            }
+        }
+    </script>
+</body>
+</html>
