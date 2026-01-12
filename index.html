@@ -57,7 +57,7 @@
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center space-x-2">
                 <i class="fas fa-vote-yea text-xl"></i>
-                <span class="text-lg font-bold">เลือกตัวแทน คปอ.2569</span>
+                <span class="text-lg font-bold">เลือกตัวแทน คปอ.</span>
             </div>
             <div id="user-badge" class="hidden text-xs bg-blue-700 bg-opacity-80 px-3 py-1.5 rounded-full items-center shadow-sm">
                 <i class="fas fa-user mr-1.5"></i><span id="display-empid" class="font-mono"></span>
@@ -75,7 +75,7 @@
                     <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-blue-50">
                         <i class="fas fa-id-card text-2xl text-blue-600"></i>
                     </div>
-                    <h2 class="text-xl font-bold text-gray-800">เข้าสู่ระบบ</h2>
+                    <h2 class="text-xl font-bold text-gray-800">เลือกตัวแทน คปอ.</h2>
                     <p class="text-gray-500 text-sm mt-1">กรอกรหัสพนักงานเพื่อเริ่มโหวต</p>
                 </div>
                 
@@ -270,12 +270,17 @@
                 const imgSrc = c.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random`;
 
                 card.innerHTML = `
+                    <!-- Number Badge -->
+                    <div class="absolute top-0 left-0 bg-blue-600 text-white text-sm font-bold px-3 py-1 rounded-br-xl shadow-sm z-10">
+                        No. ${c.id}
+                    </div>
+
                     <div class="absolute top-2 right-2 check-icon text-blue-600 bg-blue-50 rounded-full p-1 z-10">
                         <i class="fas fa-check-circle text-xl"></i>
                     </div>
                     
                     <!-- Image Wrapper -->
-                    <div class="flex-shrink-0">
+                    <div class="flex-shrink-0 pt-1 md:pt-4">
                         <img src="${imgSrc}" alt="${c.name}" class="w-16 h-16 md:w-24 md:h-24 rounded-full object-cover border-2 border-white shadow-sm bg-gray-100">
                     </div>
                     
@@ -296,7 +301,7 @@
             
             const bar = document.getElementById('submit-bar');
             bar.classList.remove('translate-y-full');
-            document.getElementById('selected-name').innerText = candidate.name;
+            document.getElementById('selected-name').innerText = `No.${candidate.id} - ${candidate.name}`;
         }
 
         // ==========================================
@@ -308,7 +313,7 @@
             // Use simple confirm for mobile speed, or SweetAlert with better config
             Swal.fire({
                 title: 'ยืนยัน?',
-                text: `คุณเลือก "${selectedCandidate.name}"`,
+                text: `คุณเลือก "No.${selectedCandidate.id} ${selectedCandidate.name}"`,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#16a34a',
@@ -385,6 +390,7 @@
                         <p class="text-gray-600 mb-8">ขอบคุณสำหรับการโหวต</p>
                         
                         <div class="w-full max-w-xs bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-3 mx-auto">
+                            <div class="flex-shrink-0 font-bold text-xl text-gray-300 mr-2">#${selectedCandidate.id}</div>
                             <img src="${selectedCandidate.img || 'https://via.placeholder.com/50'}" class="w-12 h-12 rounded-full bg-gray-200 object-cover">
                             <div class="text-left overflow-hidden">
                                 <p class="text-sm text-gray-500">คุณเลือก</p>
