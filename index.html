@@ -14,34 +14,34 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        /* พื้นหลังเว็บเป็นสีฟ้าเข้ม (Blue-900) */
-        body { font-family: 'Sarabun', sans-serif; background-color: #1e3a8a; -webkit-tap-highlight-color: transparent; }
+        /* พื้นหลังเว็บเป็นสีเทาอ่อนสบายตา (Slate-50) */
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
         
         /* Safe Area for iPhone X+ */
         .safe-pb { padding-bottom: env(safe-area-inset-bottom); }
         
         /* Custom Styles for Selection */
         .candidate-card { 
-            transition: transform 0.2s, border-color 0.2s, background-color 0.2s; 
+            transition: all 0.2s ease; 
             border: 2px solid transparent; 
             touch-action: manipulation;
         }
-        /* Active State: เหลืองเข้มขึ้น */
-        .candidate-card:active { transform: scale(0.98); background-color: #fde047; /* Yellow-300 */ }
+        /* Active State: เทาเข้มขึ้นเล็กน้อย */
+        .candidate-card:active { transform: scale(0.98); background-color: #f1f5f9; /* Slate-100 */ }
         
-        /* Selected State: ขอบฟ้าเข้ม พื้นเหลืองสดใส */
+        /* Selected State: ขอบสีคราม พื้นสีครามจางๆ */
         .candidate-card.selected { 
-            border-color: #1e40af; /* Blue-800 */
-            background-color: #fef08a; /* Yellow-200 */
-            box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.4), 0 2px 4px -1px rgba(30, 58, 138, 0.2);
+            border-color: #4f46e5; /* Indigo-600 */
+            background-color: #eef2ff; /* Indigo-50 */
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.1), 0 4px 6px -2px rgba(79, 70, 229, 0.05);
         }
         .check-icon { opacity: 0; transition: opacity 0.2s; transform: scale(0.5); }
         .candidate-card.selected .check-icon { opacity: 1; transform: scale(1); }
 
-        /* Loader: สีฟ้า/เหลือง */
+        /* Loader: สีคราม */
         .loader {
-            border: 3px solid #fefce8; /* Yellow-50 */
-            border-top: 3px solid #facc15; /* Yellow-400 */
+            border: 3px solid #e2e8f0; /* Slate-200 */
+            border-top: 3px solid #4f46e5; /* Indigo-600 */
             border-radius: 50%;
             width: 30px;
             height: 30px;
@@ -57,111 +57,113 @@
         .progress-bar { transition: width 1s ease-in-out; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col bg-blue-900">
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-800">
 
-    <!-- Navbar: ฟ้าเข้ม (Darker Blue) ตัดกับ Text เหลืองอ่อน -->
-    <nav class="bg-blue-950 text-yellow-50 shadow-md sticky top-0 z-40 safe-pt border-b border-blue-800">
+    <!-- Navbar: สีขาวสะอาดตา (White) ตัดกับ Text สีเข้ม -->
+    <nav class="bg-white text-slate-700 shadow-sm sticky top-0 z-40 safe-pt border-b border-slate-200">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center space-x-2">
-                <i class="fas fa-vote-yea text-xl text-yellow-300"></i>
-                <span class="text-lg font-bold">เลือกตัวแทน คปอ.</span>
+                <div class="bg-indigo-600 text-white w-8 h-8 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-vote-yea text-sm"></i>
+                </div>
+                <span class="text-lg font-bold text-slate-800">เลือกตัวแทน คปอ.</span>
             </div>
             
             <div class="flex items-center space-x-3">
-                <div id="user-badge" class="hidden text-xs bg-blue-800 bg-opacity-80 px-3 py-1.5 rounded-full items-center shadow-sm border border-blue-600 text-yellow-100">
-                    <i class="fas fa-user mr-1.5 text-yellow-300"></i><span id="display-empid" class="font-mono"></span>
+                <div id="user-badge" class="hidden text-xs bg-slate-100 px-3 py-1.5 rounded-full items-center border border-slate-200 text-slate-600">
+                    <i class="fas fa-user mr-1.5 text-indigo-500"></i><span id="display-empid" class="font-mono font-semibold"></span>
                 </div>
                 <!-- Summary Button (Hidden) -->
-                <button onclick="toggleSummary()" class="hidden p-2 rounded-full hover:bg-blue-800 transition relative group text-yellow-100">
+                <button onclick="toggleSummary()" class="hidden p-2 rounded-full hover:bg-slate-100 transition relative group text-slate-500">
                     <i class="fas fa-chart-pie text-lg"></i>
-                    <span class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50">ดูผลคะแนน</span>
+                    <span class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50">ดูผลคะแนน</span>
                 </button>
             </div>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="flex-grow container mx-auto px-4 py-6 max-w-lg md:max-w-5xl mb-24">
+    <main class="flex-grow container mx-auto px-4 py-8 max-w-lg md:max-w-5xl mb-24">
         
         <!-- View 1: Login Screen -->
-        <div id="view-login" class="flex flex-col items-center justify-center min-h-[70vh] fade-in">
-            <!-- Login Card: สีเหลืองอ่อน (Yellow-50) -->
-            <div class="bg-yellow-50 p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-sm text-center border-4 border-blue-800">
+        <div id="view-login" class="flex flex-col items-center justify-center min-h-[60vh] fade-in">
+            <!-- Login Card: สีขาวสะอาด -->
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full max-w-sm text-center border border-slate-100">
                 <div class="mb-6">
-                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-blue-200">
-                        <i class="fas fa-id-card text-2xl text-blue-800"></i>
+                    <div class="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-white shadow-sm">
+                        <i class="fas fa-id-card text-2xl text-indigo-600"></i>
                     </div>
-                    <h2 class="text-xl font-bold text-blue-900">เลือกตัวแทน คปอ.</h2>
-                    <p class="text-blue-600 text-sm mt-1">กรอกรหัสพนักงานเพื่อเริ่มโหวต</p>
+                    <h2 class="text-xl font-bold text-slate-800">เข้าสู่ระบบ</h2>
+                    <p class="text-slate-500 text-sm mt-1">กรอกรหัสพนักงานเพื่อตรวจสอบสิทธิ์</p>
                 </div>
                 
                 <div class="space-y-4">
-                    <!-- Input: พื้นขาว Text ฟ้าเข้ม -->
+                    <!-- Input: พื้นขาว Border เทาอ่อน -->
                     <input type="text" id="input-empid" 
-                           class="w-full px-4 py-3.5 border-2 border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-600 outline-none transition text-center text-lg font-semibold tracking-wide placeholder-blue-300 bg-white text-blue-900"
+                           class="w-full px-4 py-3.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-center text-lg font-semibold tracking-wide placeholder-slate-400 bg-white text-slate-800 shadow-sm"
                            placeholder="ระบุรหัสพนักงาน"
                            inputmode="text"
                            autocomplete="off"
                            onkeypress="handleEnter(event)">
                     
-                    <!-- Button: สีฟ้าเข้ม (Blue-800) -->
+                    <!-- Button: สีคราม (Indigo-600) -->
                     <button onclick="login()" 
-                            class="w-full bg-blue-800 hover:bg-blue-700 active:bg-blue-900 text-yellow-50 font-bold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center space-x-2 touch-manipulation border-b-4 border-blue-950 active:border-b-0 active:translate-y-1">
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-3.5 rounded-xl transition shadow-md flex items-center justify-center space-x-2 touch-manipulation">
                         <span>ตรวจสอบสิทธิ์</span>
                         <i class="fas fa-arrow-right text-sm"></i>
                     </button>
                 </div>
-                <div class="mt-6 text-xs text-blue-800 bg-blue-50 py-2 rounded-lg border border-blue-100 font-medium">
-                    <i class="fas fa-shield-alt mr-1 text-blue-600"></i> ตรวจสอบสิทธิ์จากฐานข้อมูล
+                <div class="mt-6 text-xs text-slate-500 bg-slate-50 py-2 rounded-lg border border-slate-100 font-medium">
+                    <i class="fas fa-shield-alt mr-1 text-indigo-500"></i> ตรวจสอบสิทธิ์จากฐานข้อมูล
                 </div>
             </div>
         </div>
 
         <!-- View 2: Voting Screen -->
         <div id="view-voting" class="hidden pb-safe">
-            <div class="text-center mb-6">
-                <!-- Text on Dark Background: สีขาว/เหลืองอ่อน -->
-                <h1 class="text-2xl font-bold text-yellow-50">เลือกตัวแทน สวัสดิการ</h1>
-                <p class="text-sm text-blue-200 mt-1">แตะที่รายชื่อเพื่อเลือก (1 ท่าน)</p>
+            <div class="text-center mb-8">
+                <!-- Text on Light Background: สีเทาเข้ม -->
+                <h1 class="text-2xl font-bold text-slate-800">รายชื่อผู้สมัคร</h1>
+                <p class="text-sm text-slate-500 mt-1">แตะที่รายชื่อเพื่อเลือก (1 ท่าน)</p>
             </div>
 
             <!-- Loading State -->
             <div id="loading-spinner" class="flex flex-col items-center justify-center my-10 space-y-3">
                 <div class="loader"></div>
-                <p class="text-sm text-yellow-100">กำลังโหลดรายชื่อ...</p>
+                <p class="text-sm text-slate-400">กำลังโหลดรายชื่อ...</p>
             </div>
 
             <!-- Candidates Grid: Mobile = 1 col, Tablet/PC = Grid -->
-            <div id="candidates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
+            <div id="candidates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
                 <!-- Javascript will inject content here -->
             </div>
         </div>
 
         <!-- View 3: Summary Screen -->
         <div id="view-summary" class="hidden pb-safe fade-in">
-            <!-- Modal: สีเหลืองอ่อน -->
-            <div class="bg-yellow-50 rounded-2xl shadow-2xl border-2 border-blue-800 overflow-hidden">
-                <div class="bg-blue-900 text-yellow-50 p-4 flex justify-between items-center border-b border-blue-700">
-                    <h2 class="text-lg font-bold"><i class="fas fa-chart-bar mr-2 text-yellow-300"></i> สรุปผลคะแนน</h2>
-                    <button onclick="closeSummary()" class="text-blue-300 hover:text-white transition">
+            <!-- Modal: สีขาว -->
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                <div class="bg-slate-50 text-slate-800 p-4 flex justify-between items-center border-b border-slate-200">
+                    <h2 class="text-lg font-bold"><i class="fas fa-chart-bar mr-2 text-indigo-500"></i> สรุปผลคะแนน</h2>
+                    <button onclick="closeSummary()" class="text-slate-400 hover:text-slate-600 transition">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
                 
                 <div class="p-6">
                     <div class="flex justify-between items-end mb-4">
-                        <p class="text-sm text-blue-800 font-medium">ผลคะแนนล่าสุด (Real-time)</p>
-                        <button onclick="loadSummaryData()" class="text-blue-600 text-sm hover:underline"><i class="fas fa-sync-alt mr-1"></i> รีเฟรช</button>
+                        <p class="text-sm text-slate-600 font-medium">ผลคะแนนล่าสุด (Real-time)</p>
+                        <button onclick="loadSummaryData()" class="text-indigo-600 text-sm hover:underline"><i class="fas fa-sync-alt mr-1"></i> รีเฟรช</button>
                     </div>
 
                     <div id="summary-list" class="space-y-6">
                         <!-- Summary items will be injected here -->
-                        <div class="flex justify-center py-8 text-blue-300">
-                            <div class="loader w-6 h-6 border-2 border-blue-200 border-t-blue-600"></div>
+                        <div class="flex justify-center py-8 text-slate-300">
+                            <div class="loader w-6 h-6 border-2 border-slate-200 border-t-indigo-600"></div>
                         </div>
                     </div>
                 </div>
-                <div class="bg-blue-50 px-6 py-4 text-center text-xs text-blue-500 border-t border-blue-100">
+                <div class="bg-slate-50 px-6 py-4 text-center text-xs text-slate-400 border-t border-slate-100">
                     * ผลคะแนนอย่างไม่เป็นทางการ
                 </div>
             </div>
@@ -170,16 +172,16 @@
     </main>
 
     <!-- Floating Submit Bar (Mobile Friendly) -->
-    <!-- Bar: สีเหลืองอ่อน เพื่อให้เด่นบนพื้นฟ้าเข้ม -->
-    <div id="submit-bar" class="fixed bottom-0 left-0 w-full bg-yellow-50 border-t-4 border-blue-600 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.3)] transform translate-y-full transition-transform duration-300 z-50 safe-pb">
+    <!-- Bar: สีขาวสะอาด เงานุ่ม -->
+    <div id="submit-bar" class="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200 shadow-lg transform translate-y-full transition-transform duration-300 z-50 safe-pb">
         <div class="container mx-auto px-4 py-3 md:py-4 flex flex-row justify-between items-center max-w-5xl">
             <div class="flex flex-col pr-4 overflow-hidden">
-                <span class="text-xs text-blue-600 font-bold uppercase tracking-wider">คุณเลือก:</span>
-                <div class="font-bold text-blue-900 text-lg truncate" id="selected-name">None</div>
+                <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">คุณเลือก:</span>
+                <div class="font-bold text-indigo-700 text-lg truncate" id="selected-name">None</div>
             </div>
-            <!-- Submit Button: ฟ้าเข้ม -->
+            <!-- Submit Button: สีเขียวมรกต (Emerald-500) เพื่อสื่อถึงการยืนยัน -->
             <button onclick="confirmVote()" 
-                    class="bg-blue-800 active:bg-blue-900 text-yellow-50 font-bold py-2.5 px-6 rounded-lg shadow-md transition whitespace-nowrap flex items-center border-b-4 border-blue-950 active:border-b-0 active:translate-y-0.5">
+                    class="bg-emerald-500 active:bg-emerald-600 text-white font-bold py-2.5 px-6 rounded-lg shadow-md transition whitespace-nowrap flex items-center hover:shadow-lg">
                 <span>ยืนยัน</span>
                 <i class="fas fa-check ml-2"></i>
             </button>
@@ -190,7 +192,7 @@
         // ==========================================
         // ⚙️ CONFIGURATION
         // ==========================================
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8k1GbZnnodvIQs6WIdIHSw2rGMff-HO-hn9jKzSsPalKh3xXWIzVJA9DbiC_JQd79_w/exec"; 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0NQQ0oiDnVF3Xyw62c2evZyKanfKIF3THTezBcAoSqCQ5hNReyhqhK8amrZAKmFPtzA/exec"; 
 
         // 💾 ข้อมูลจำลอง (Mock Data)
         const MOCK_DATA = [
@@ -231,7 +233,7 @@
                     title: 'กรุณากรอกรหัส',
                     text: 'ช่องรหัสพนักงานห้ามว่าง',
                     confirmButtonText: 'ตกลง',
-                    customClass: { confirmButton: 'bg-blue-800 text-white' }
+                    customClass: { confirmButton: 'bg-indigo-600 text-white' }
                 });
                 return;
             }
@@ -243,7 +245,7 @@
                     title: 'คุณใช้สิทธิ์ไปแล้ว',
                     text: 'ไม่สามารถโหวตซ้ำได้ (ตรวจสอบจากเครื่องนี้)',
                     confirmButtonText: 'ปิด',
-                    customClass: { confirmButton: 'bg-gray-600 text-white' }
+                    customClass: { confirmButton: 'bg-slate-500 text-white' }
                 });
                 return;
             }
@@ -294,7 +296,7 @@
                             title: 'ไม่พบข้อมูล',
                             text: 'รหัสพนักงานนี้ไม่มีสิทธิ์โหวต หรือข้อมูลไม่ถูกต้อง',
                             confirmButtonText: 'ลองใหม่',
-                            customClass: { confirmButton: 'bg-red-700 text-white' }
+                            customClass: { confirmButton: 'bg-red-500 text-white' }
                         });
                     }
                 } else {
@@ -324,7 +326,7 @@
                     title: 'เกิดข้อผิดพลาด',
                     text: 'ไม่สามารถเชื่อมต่อระบบตรวจสอบสิทธิ์ได้',
                     confirmButtonText: 'ตกลง',
-                    customClass: { confirmButton: 'bg-blue-800 text-white' }
+                    customClass: { confirmButton: 'bg-indigo-600 text-white' }
                 });
             }
         }
@@ -390,7 +392,7 @@
 
         async function loadSummaryData() {
             const container = document.getElementById('summary-list');
-            container.innerHTML = '<div class="flex justify-center py-8 text-blue-200"><div class="loader w-6 h-6 border-2"></div></div>';
+            container.innerHTML = '<div class="flex justify-center py-8 text-slate-300"><div class="loader w-6 h-6 border-2"></div></div>';
 
             let data = [];
             
@@ -434,29 +436,29 @@
 
             candidatesData.forEach(c => {
                 const card = document.createElement('div');
-                // Card: พื้นเหลืองอ่อน (Yellow-50)
-                card.className = `candidate-card bg-yellow-50 rounded-xl shadow-lg p-4 cursor-pointer relative overflow-hidden group flex md:flex-col items-center gap-4 md:gap-2 border-2 border-transparent`;
+                // Card: พื้นขาว (White)
+                card.className = `candidate-card bg-white rounded-xl shadow-sm hover:shadow-md p-4 cursor-pointer relative overflow-hidden group flex md:flex-col items-center gap-4 md:gap-2`;
                 card.onclick = () => selectCandidate(c);
                 card.id = `card-${c.id}`;
 
                 const imgSrc = c.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random`;
 
                 card.innerHTML = `
-                    <div class="absolute top-0 left-0 bg-blue-800 text-yellow-50 text-sm font-bold px-3 py-1 rounded-br-xl shadow-sm z-10 border-b border-r border-blue-900">
+                    <div class="absolute top-0 left-0 bg-slate-700 text-white text-sm font-bold px-3 py-1 rounded-br-xl shadow-sm z-10">
                         No. ${c.id}
                     </div>
 
-                    <div class="absolute top-2 right-2 check-icon text-blue-700 bg-yellow-200 rounded-full p-1 z-10 shadow-sm">
+                    <div class="absolute top-2 right-2 check-icon text-indigo-600 bg-indigo-50 rounded-full p-1 z-10 shadow-sm">
                         <i class="fas fa-check-circle text-xl"></i>
                     </div>
                     
                     <div class="flex-shrink-0 pt-1 md:pt-4">
-                        <img src="${imgSrc}" alt="${c.name}" class="w-16 h-16 md:w-24 md:h-24 rounded-full object-cover border-2 border-white shadow-md bg-blue-100">
+                        <img src="${imgSrc}" alt="${c.name}" class="w-16 h-16 md:w-24 md:h-24 rounded-full object-cover border-2 border-white shadow-sm bg-slate-100">
                     </div>
                     
                     <div class="flex-grow text-left md:text-center min-w-0">
-                        <h3 class="text-base md:text-lg font-bold text-blue-900 leading-tight truncate pr-6 md:pr-0">${c.name}</h3>
-                        <span class="inline-block mt-1 bg-blue-50 text-blue-600 text-xs px-2 py-0.5 rounded-md truncate max-w-full border border-blue-100 font-medium">${c.dept}</span>
+                        <h3 class="text-base md:text-lg font-bold text-slate-800 leading-tight truncate pr-6 md:pr-0">${c.name}</h3>
+                        <span class="inline-block mt-1 bg-slate-50 text-slate-500 text-xs px-2 py-0.5 rounded-md truncate max-w-full border border-slate-100 font-medium">${c.dept}</span>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -468,7 +470,7 @@
             container.innerHTML = '';
 
             if (data.length === 0) {
-                 container.innerHTML = '<div class="text-center text-blue-400 py-4">ไม่พบข้อมูลคะแนน</div>';
+                 container.innerHTML = '<div class="text-center text-slate-400 py-4">ไม่พบข้อมูลคะแนน</div>';
                  return;
             }
 
@@ -487,13 +489,13 @@
                 item.innerHTML = `
                     <div class="flex justify-between items-center mb-1">
                         <div class="flex items-center space-x-2">
-                            <span class="text-xs font-bold text-blue-400 w-5">#${index + 1}</span>
-                            <span class="font-semibold text-blue-900 text-sm truncate max-w-[150px]">${c.name}</span>
+                            <span class="text-xs font-bold text-slate-400 w-5">#${index + 1}</span>
+                            <span class="font-semibold text-slate-700 text-sm truncate max-w-[150px]">${c.name}</span>
                         </div>
-                        <span class="text-sm font-bold ${isWinner ? 'text-blue-700' : 'text-gray-500'}">${voteCount} คะแนน</span>
+                        <span class="text-sm font-bold ${isWinner ? 'text-indigo-600' : 'text-slate-500'}">${voteCount} คะแนน</span>
                     </div>
-                    <div class="w-full bg-blue-100 rounded-full h-2.5 overflow-hidden">
-                        <div class="bg-blue-600 h-2.5 rounded-full progress-bar" style="width: 0%"></div>
+                    <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-indigo-500 h-2.5 rounded-full progress-bar" style="width: 0%"></div>
                     </div>
                 `;
                 container.appendChild(item);
@@ -504,7 +506,7 @@
                     // Gold color for winner
                     if(isWinner) {
                         const bar = item.querySelector('.progress-bar');
-                        bar.classList.remove('bg-blue-600');
+                        bar.classList.remove('bg-indigo-500');
                         bar.classList.add('bg-yellow-500'); 
                     }
                 }, 100);
@@ -532,8 +534,8 @@
                 text: `คุณเลือก "No.${selectedCandidate.id} ${selectedCandidate.name}"`,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#1e40af', // Blue-800
-                cancelButtonColor: '#9ca3af',
+                confirmButtonColor: '#10b981', // Emerald-500
+                cancelButtonColor: '#94a3b8',
                 confirmButtonText: 'ใช่, โหวตเลย',
                 cancelButtonText: 'ยกเลิก',
                 reverseButtons: true
@@ -598,22 +600,22 @@
                 const votingView = document.getElementById('view-voting');
                 votingView.innerHTML = `
                     <div class="flex flex-col items-center justify-center py-16 px-4 fade-in text-center h-full">
-                        <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-                            <i class="fas fa-check text-4xl text-blue-800"></i>
+                        <div class="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-6">
+                            <i class="fas fa-check text-4xl text-emerald-500"></i>
                         </div>
-                        <h2 class="text-2xl font-bold text-yellow-50 mb-2">บันทึกเรียบร้อย</h2>
-                        <p class="text-blue-200 mb-8">ขอบคุณสำหรับการโหวต</p>
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">บันทึกเรียบร้อย</h2>
+                        <p class="text-slate-500 mb-8">ขอบคุณสำหรับการโหวต</p>
                         
-                        <div class="w-full max-w-xs bg-yellow-50 p-4 rounded-xl shadow-lg border border-blue-800 flex items-center space-x-3 mx-auto">
-                            <div class="flex-shrink-0 font-bold text-xl text-blue-300 mr-2">#${selectedCandidate.id}</div>
-                            <img src="${selectedCandidate.img || 'https://via.placeholder.com/50'}" class="w-12 h-12 rounded-full bg-gray-200 object-cover border border-blue-200">
+                        <div class="w-full max-w-xs bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center space-x-3 mx-auto">
+                            <div class="flex-shrink-0 font-bold text-xl text-slate-300 mr-2">#${selectedCandidate.id}</div>
+                            <img src="${selectedCandidate.img || 'https://via.placeholder.com/50'}" class="w-12 h-12 rounded-full bg-slate-100 object-cover border border-slate-100">
                             <div class="text-left overflow-hidden">
-                                <p class="text-sm text-gray-500">คุณเลือก</p>
-                                <p class="font-bold text-blue-900 truncate">${selectedCandidate.name}</p>
+                                <p class="text-sm text-slate-400">คุณเลือก</p>
+                                <p class="font-bold text-indigo-700 truncate">${selectedCandidate.name}</p>
                             </div>
                         </div>
 
-                        <button onclick="location.reload()" class="mt-12 text-blue-300 hover:text-white transition text-sm flex items-center">
+                        <button onclick="location.reload()" class="mt-12 text-slate-400 hover:text-indigo-600 transition text-sm flex items-center">
                             <i class="fas fa-redo mr-2"></i> กลับหน้าหลัก
                         </button>
                     </div>
