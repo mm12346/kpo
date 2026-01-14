@@ -101,12 +101,12 @@
                     
                     <button onclick="login()" 
                             class="w-full bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-bold py-3.5 rounded-xl transition shadow-md flex items-center justify-center space-x-2 touch-manipulation border-b-4 border-green-800 active:border-b-0 active:translate-y-1">
-                        <span>เข้าสู่ระบบ</span>
+                        <span>ตรวจสอบสิทธิ์</span>
                         <i class="fas fa-arrow-right text-sm"></i>
                     </button>
                 </div>
                 <div class="mt-6 text-xs text-gray-500 bg-yellow-50 py-2 rounded-lg border border-yellow-100">
-                    <i class="fas fa-info-circle mr-1 text-green-600"></i> 1 รหัสพนักงาน โหวตได้ 1 ครั้ง
+                    <i class="fas fa-info-circle mr-1 text-green-600"></i> ตรวจสอบสิทธิ์จากฐานข้อมูล
                 </div>
             </div>
         </div>
@@ -209,9 +209,9 @@
         }
 
         // ==========================================
-        // 🔐 LOGIN LOGIC
+        // 🔐 LOGIN LOGIC (UPDATED WITH AUTH CHECK)
         // ==========================================
-        function login() {
+        async function login() {
             const input = document.getElementById('input-empid');
             const empId = input.value.trim().toUpperCase();
 
@@ -226,27 +226,96 @@
                 return;
             }
 
+            // เช็ค Local Storage ก่อนเพื่อความเร็ว (กรณีโหวตไปแล้ว)
             if (localStorage.getItem(`voted_${empId}`)) {
                 Swal.fire({
                     icon: 'error',
                     title: 'คุณใช้สิทธิ์ไปแล้ว',
-                    text: 'ไม่สามารถโหวตซ้ำได้',
+                    text: 'ไม่สามารถโหวตซ้ำได้ (ตรวจสอบจากเครื่องนี้)',
                     confirmButtonText: 'ปิด',
                     customClass: { confirmButton: 'bg-gray-500' }
                 });
                 return;
             }
 
-            currentUser = empId;
-            document.getElementById('display-empid').innerText = currentUser;
-            
-            input.blur();
+            // เริ่มการตรวจสอบสิทธิ์กับ Server
+            Swal.fire({
+                title: 'กำลังตรวจสอบสิทธิ์...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
 
-            switchView('view-voting');
-            document.getElementById('user-badge').classList.remove('hidden');
-            document.getElementById('user-badge').classList.add('flex');
+            try {
+                if (GOOGLE_SCRIPT_URL) {
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        redirect: 'follow',
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({
+                            action: 'check_auth',
+                            empId: empId
+                        })
+                    });
 
-            loadCandidates();
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        // ผ่านการตรวจสอบ
+                        currentUser = empId;
+                        const userName = result.name || empId;
+                        
+                        document.getElementById('display-empid').innerText = `${userName}`;
+                        
+                        Swal.close();
+                        input.blur();
+                        
+                        // เปลี่ยนหน้า
+                        switchView('view-voting');
+                        document.getElementById('user-badge').classList.remove('hidden');
+                        document.getElementById('user-badge').classList.add('flex');
+
+                        loadCandidates();
+
+                    } else {
+                        // ไม่ผ่านการตรวจสอบ
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'ไม่พบข้อมูล',
+                            text: 'รหัสพนักงานนี้ไม่มีสิทธิ์โหวต หรือข้อมูลไม่ถูกต้อง',
+                            confirmButtonText: 'ลองใหม่',
+                            customClass: { confirmButton: 'bg-red-600' }
+                        });
+                    }
+                } else {
+                    // Demo Mode (Offline)
+                    await new Promise(r => setTimeout(r, 1000));
+                    // ในโหมด Demo ให้ผ่านหมด แต่เตือน
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'โหมดสาธิต (Demo)',
+                        text: 'ข้ามการตรวจสอบสิทธิ์จริง (เนื่องจากไม่ได้เชื่อมต่อ Server)',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        currentUser = empId;
+                        document.getElementById('display-empid').innerText = currentUser;
+                        input.blur();
+                        switchView('view-voting');
+                        document.getElementById('user-badge').classList.remove('hidden');
+                        document.getElementById('user-badge').classList.add('flex');
+                        loadCandidates();
+                    });
+                }
+            } catch (error) {
+                console.error("Auth Error:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถเชื่อมต่อระบบตรวจสอบสิทธิ์ได้',
+                    confirmButtonText: 'ตกลง'
+                });
+            }
         }
 
         // ==========================================
