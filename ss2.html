@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ระบบเลือกตั้งตัวแทนพนักงาน</title>
+    
+    <!-- CSS Framework & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons & Alerts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        /* พื้นหลังเว็บเป็นสีฟ้าเข้ม (Blue-900) */
+        body { font-family: 'Sarabun', sans-serif; background-color: #1e3a8a; -webkit-tap-highlight-color: transparent; }
+        
+        /* Safe Area for iPhone X+ */
+        .safe-pb { padding-bottom: env(safe-area-inset-bottom); }
+        .safe-pt { padding-top: env(safe-area-inset-top); }
+        
+        /* Custom Styles for Selection */
+        .candidate-card { 
+            transition: transform 0.2s, border-color 0.2s, background-color 0.2s; 
+            border: 2px solid transparent; 
+            touch-action: manipulation;
+        }
+        /* Active State: เหลืองเข้มขึ้น */
+        .candidate-card:active { transform: scale(0.98); background-color: #fde047; /* Yellow-300 */ }
+        
+        /* Selected State: ขอบฟ้าเข้ม พื้นเหลืองสดใส */
+        .candidate-card.selected { 
+            border-color: #1e40af; /* Blue-800 */
+            background-color: #fef08a; /* Yellow-200 */
+            box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.4), 0 2px 4px -1px rgba(30, 58, 138, 0.2);
+        }
+        .check-icon { opacity: 0; transition: opacity 0.2s; transform: scale(0.5); }
+        .candidate-card.selected .check-icon { opacity: 1; transform: scale(1); }
+
+        /* Loader: สีฟ้า/เหลือง */
+        .loader {
+            border: 3px solid #fefce8; /* Yellow-50 */
+            border-top: 3px solid #facc15; /* Yellow-400 */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Progress Bar Animation */
+        .progress-bar { transition: width 1s ease-in-out; }
+        
+        /* Admin Badge */
+        .admin-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-blue-900 text-gray-800">
+
+    <!-- Navbar: ฟ้าเข้ม (Darker Blue) ตัดกับ Text เหลืองอ่อน -->
+    <nav class="bg-blue-950 text-yellow-50 shadow-md sticky top-0 z-40 safe-pt border-b border-blue-800">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2" onclick="location.reload()">
+                <i class="fas fa-vote-yea text-xl text-yellow-300"></i>
+                <span class="text-lg font-bold">เลือกตัวแทน คปอ.</span>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <!-- User Badge -->
+                <div id="user-badge" class="hidden text-xs bg-blue-800 bg-opacity-80 px-3 py-1.5 rounded-full items-center shadow-sm border border-blue-600 text-yellow-100">
+                    <i class="fas fa-user mr-1.5 text-yellow-300"></i><span id="display-empid" class="font-mono"></span>
+                </div>
+                
+                <!-- Admin Button -->
+                <button onclick="checkAdminAccess()" class="p-2 rounded-full hover:bg-blue-800 text-blue-300 hover:text-yellow-300 transition relative group">
+                    <i class="fas fa-cog text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-6 max-w-lg md:max-w-5xl mb-24">
+        
+        <!-- View 1: Login Screen -->
+        <div id="view-login" class="flex flex-col items-center justify-center min-h-[60vh] fade-in">
+            <!-- Login Card: สีเหลืองอ่อน (Yellow-50) -->
+            <div class="bg-yellow-50 p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-sm text-center border-4 border-blue-800">
+                <div class="mb-6">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 ring-4 ring-blue-200">
+                        <i class="fas fa-id-card text-2xl text-blue-800"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-blue-900">เข้าสู่ระบบ</h2>
+                    <p class="text-blue-600 text-sm mt-1">กรอกรหัสพนักงานเพื่อเริ่มโหวต</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <!-- Input: พื้นขาว Text ฟ้าเข้ม -->
+                    <input type="text" id="input-empid" 
+                           class="w-full px-4 py-3.5 border-2 border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-600 outline-none transition text-center text-lg font-semibold tracking-wide placeholder-blue-300 bg-white text-blue-900"
+                           placeholder="ระบุรหัสพนักงาน"
+                           inputmode="text"
+                           autocomplete="off"
+                           onkeypress="handleEnter(event)">
+                    
+                    <!-- Button: สีฟ้าเข้ม (Blue-800) -->
+                    <button onclick="login()" 
+                            class="w-full bg-blue-800 hover:bg-blue-700 active:bg-blue-900 text-yellow-50 font-bold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center space-x-2 touch-manipulation border-b-4 border-blue-950 active:border-b-0 active:translate-y-1">
+                        <span>ตรวจสอบสิทธิ์</span>
+                        <i class="fas fa-arrow-right text-sm"></i>
+                    </button>
+                </div>
+                
+                <div id="online-mode-indicator" class="mt-6 text-xs text-blue-800 bg-blue-50 py-2 rounded-lg border border-blue-100 font-medium">
+                    <i class="fas fa-cloud mr-1 text-blue-600"></i> ตรวจสอบสิทธิ์ออนไลน์
+                </div>
+            </div>
+        </div>
+
+        <!-- View 2: Voting Screen -->
+        <div id="view-voting" class="hidden pb-safe fade-in">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-yellow-50">เลือกตัวแทน คปอ.</h1>
+                <p class="text-sm text-blue-200 mt-1">แตะที่รายชื่อเพื่อเลือก (1 ท่าน)</p>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-spinner" class="flex flex-col items-center justify-center my-10 space-y-3">
+                <div class="loader"></div>
+                <p class="text-sm text-yellow-100">กำลังโหลดรายชื่อ...</p>
+            </div>
+
+            <!-- Candidates Grid -->
+            <div id="candidates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
+                <!-- Javascript will inject content here -->
+            </div>
+        </div>
+
+        <!-- View 3: Summary Screen -->
+        <div id="view-summary" class="hidden pb-safe fade-in">
+            <div class="bg-yellow-50 rounded-2xl shadow-2xl border-2 border-blue-800 overflow-hidden max-w-2xl mx-auto">
+                <div class="bg-blue-900 text-yellow-50 p-4 flex justify-between items-center border-b border-blue-700">
+                    <h2 class="text-lg font-bold"><i class="fas fa-chart-bar mr-2 text-yellow-300"></i> สรุปผลคะแนน</h2>
+                    <button onclick="closeSummary()" class="text-blue-300 hover:text-white transition">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="p-6">
+                    <div class="flex justify-between items-end mb-4">
+                        <p class="text-sm text-blue-800 font-medium">ผลคะแนนล่าสุด</p>
+                        <button onclick="loadSummaryData()" class="text-blue-600 text-sm hover:underline"><i class="fas fa-sync-alt mr-1"></i> รีเฟรช</button>
+                    </div>
+
+                    <div id="summary-list" class="space-y-6">
+                        <!-- Summary items injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- View 4: Admin Panel (Updated with Summary Button) -->
+        <div id="view-admin" class="hidden pb-safe fade-in">
+            <div class="bg-white rounded-2xl shadow-2xl overflow-hidden border-2 border-blue-400 max-w-2xl mx-auto">
+                <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
+                    <h2 class="text-lg font-bold flex items-center">
+                        <i class="fas fa-user-shield mr-2 text-yellow-400"></i> จัดการผู้มีสิทธิ์ (Google Sheet)
+                    </h2>
+                    <button onclick="closeAdmin()" class="text-gray-400 hover:text-white transition">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="p-6">
+                    <!-- New: View Summary Button -->
+                    <div class="mb-6">
+                        <button onclick="toggleSummary()" class="w-full bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white p-4 rounded-xl shadow-md flex items-center justify-center space-x-3 transition border-b-4 border-yellow-700 active:border-b-0 active:translate-y-1">
+                            <i class="fas fa-chart-pie text-2xl"></i>
+                            <span class="font-bold text-lg">ดูสรุปผลคะแนนโหวต</span>
+                        </button>
+                    </div>
+
+                    <hr class="border-gray-200 mb-6">
+
+                    <!-- Add User Form -->
+                    <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-6">
+                        <h3 class="text-blue-900 font-bold mb-3 text-sm uppercase tracking-wide">เพิ่มผู้มีสิทธิ์ลงฐานข้อมูล</h3>
+                        <div class="flex flex-col md:flex-row gap-3">
+                            <input type="text" id="admin-add-id" placeholder="รหัสพนักงาน (เช่น 1001)" class="flex-1 px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-blue-900">
+                            <input type="text" id="admin-add-name" placeholder="ชื่อ-สกุล" class="flex-1 px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-blue-900">
+                            <button onclick="addAuthorizedUser()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold shadow-sm whitespace-nowrap flex items-center justify-center">
+                                <i class="fas fa-plus mr-1"></i> บันทึก
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- User List -->
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-gray-700 font-bold">รายชื่อใน Sheet (<span id="auth-count">...</span>)</h3>
+                        <button onclick="loadAdminUsers()" class="text-blue-600 text-xs hover:underline"><i class="fas fa-sync"></i> รีเฟรช</button>
+                    </div>
+                    
+                    <div class="overflow-y-auto max-h-[300px] border border-gray-200 rounded-lg bg-gray-50 relative">
+                        <!-- Loading Overlay for Table -->
+                        <div id="admin-loader" class="hidden absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
+                            <div class="loader w-8 h-8 border-blue-200 border-t-blue-600"></div>
+                        </div>
+
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-100 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3">รหัส</th>
+                                    <th class="px-4 py-3">ชื่อ</th>
+                                    <th class="px-4 py-3 text-right">ลบ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auth-user-list">
+                                <!-- List items injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Floating Submit Bar -->
+    <div id="submit-bar" class="fixed bottom-0 left-0 w-full bg-yellow-50 border-t-4 border-blue-600 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.3)] transform translate-y-full transition-transform duration-300 z-50 safe-pb">
+        <div class="container mx-auto px-4 py-3 md:py-4 flex flex-row justify-between items-center max-w-5xl">
+            <div class="flex flex-col pr-4 overflow-hidden">
+                <span class="text-xs text-blue-600 font-bold uppercase tracking-wider">คุณเลือก:</span>
+                <div class="font-bold text-blue-900 text-lg truncate" id="selected-name">None</div>
+            </div>
+            <button onclick="confirmVote()" 
+                    class="bg-blue-800 active:bg-blue-900 text-yellow-50 font-bold py-2.5 px-6 rounded-lg shadow-md transition whitespace-nowrap flex items-center border-b-4 border-blue-950 active:border-b-0 active:translate-y-0.5">
+                <span>ยืนยัน</span>
+                <i class="fas fa-check ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // ⚙️ CONFIGURATION
+        // ==========================================
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8k1GbZnnodvIQs6WIdIHSw2rGMff-HO-hn9jKzSsPalKh3xXWIzVJA9DbiC_JQd79_w/exec"; 
+        const ADMIN_PASSWORD = "1234"; // รหัสผ่าน Admin
+
+        // 💾 Mock Data (ใช้กรณี Demo/Offline)
+        const MOCK_DATA = [
+            { id: 1, name: "นายสมชาย มุ่งมั่น", dept: "IT Support", img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix", votes: 45 },
+            { id: 2, name: "นางสาววิไล ใจดี", dept: "HR Manager", img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka", votes: 32 },
+            { id: 3, name: "นายประดิษฐ์ คิดไว", dept: "Marketing", img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bob", votes: 28 },
+            { id: 4, name: "คุณสุดา พาเพลิน", dept: "Accounting", img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Suda", votes: 15 }
+        ];
+
+        // ==========================================
+        // 🧠 STATE MANAGEMENT
+        // ==========================================
+        let currentUser = null;
+        let selectedCandidate = null;
+        let candidatesData = [];
+        let lastViewId = 'view-login';
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') login();
+        }
+
+        // ==========================================
+        // 🔐 LOGIN LOGIC (ONLINE FIRST)
+        // ==========================================
+        async function login() {
+            const input = document.getElementById('input-empid');
+            const empId = input.value.trim().toUpperCase();
+
+            if (!empId) {
+                Swal.fire({ icon: 'warning', title: 'กรุณากรอกรหัส', confirmButtonText: 'ตกลง' });
+                return;
+            }
+
+            if (localStorage.getItem(`voted_${empId}`)) {
+                Swal.fire({ icon: 'error', title: 'ใช้สิทธิ์ไปแล้ว', confirmButtonText: 'ปิด' });
+                return;
+            }
+
+            Swal.fire({
+                title: 'กำลังตรวจสอบสิทธิ์...', text: 'จากฐานข้อมูลออนไลน์', allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                if (GOOGLE_SCRIPT_URL) {
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST', redirect: 'follow',
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: 'check_auth', empId: empId })
+                    });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        performLoginSuccess(empId, result.name || empId);
+                    } else {
+                        Swal.fire({
+                            icon: 'error', title: 'ไม่พบข้อมูล', text: 'รหัสนี้ไม่มีในระบบ (Sheet ID)',
+                            confirmButtonText: 'ลองใหม่', customClass: { confirmButton: 'bg-red-700 text-white' }
+                        });
+                    }
+                } else {
+                    // Demo Mode fallback
+                    await new Promise(r => setTimeout(r, 1000));
+                    performLoginSuccess(empId, empId);
+                }
+            } catch (error) {
+                console.error("Auth Error:", error);
+                Swal.fire({ icon: 'error', title: 'Connection Error', text: 'เชื่อมต่อ Server ไม่ได้' });
+            }
+        }
+
+        function performLoginSuccess(empId, name) {
+            currentUser = empId;
+            document.getElementById('display-empid').innerText = name;
+            Swal.close();
+            document.getElementById('input-empid').value = '';
+            
+            switchView('view-voting');
+            document.getElementById('user-badge').classList.remove('hidden');
+            document.getElementById('user-badge').classList.add('flex');
+            loadCandidates();
+        }
+
+        // ==========================================
+        // 👮 ADMIN FUNCTIONS (UPDATED TO SHEET)
+        // ==========================================
+        function checkAdminAccess() {
+            Swal.fire({
+                title: 'Admin Access',
+                input: 'password',
+                confirmButtonText: 'เข้าสู่ระบบ',
+                showCancelButton: true,
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if (result.value === ADMIN_PASSWORD) {
+                        switchView('view-admin');
+                        loadAdminUsers(); // โหลดข้อมูลจาก Sheet เมื่อเข้าหน้า Admin
+                    } else {
+                        Swal.fire('รหัสผิด', '', 'error');
+                    }
+                }
+            });
+        }
+
+        function closeAdmin() {
+            switchView(lastViewId || 'view-login');
+        }
+
+        // เพิ่มผู้ใช้ลง Sheet
+        async function addAuthorizedUser() {
+            const idInput = document.getElementById('admin-add-id');
+            const nameInput = document.getElementById('admin-add-name');
+            const id = idInput.value.trim().toUpperCase();
+            const name = nameInput.value.trim();
+            
+            if (!id || !name) { Swal.fire('ข้อมูลไม่ครบ', '', 'warning'); return; }
+
+            // Show loading in button or overlay
+            const btn = document.querySelector('#view-admin button.bg-green-600');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+
+            try {
+                if(GOOGLE_SCRIPT_URL) {
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST', redirect: 'follow',
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: 'add_auth_user', empId: id, name: name })
+                    });
+                    const result = await response.json();
+                    
+                    if(result.status === 'success') {
+                        idInput.value = ''; nameInput.value = ''; idInput.focus();
+                        const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                        Toast.fire({ icon: 'success', title: 'เพิ่มลง Sheet แล้ว' });
+                        loadAdminUsers(); // Refresh list
+                    } else {
+                        Swal.fire('Error', result.message, 'error');
+                    }
+                } else {
+                    Swal.fire('Demo Mode', 'ไม่มี Server URL', 'info');
+                }
+            } catch (error) {
+                Swal.fire('Error', 'เชื่อมต่อ Server ไม่ได้', 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // ลบผู้ใช้ออกจาก Sheet
+        async function removeAuthorizedUser(id) {
+            if(!confirm(`ต้องการลบ ${id} จาก Sheet ใช่หรือไม่?`)) return;
+
+            document.getElementById('admin-loader').classList.remove('hidden');
+
+            try {
+                if(GOOGLE_SCRIPT_URL) {
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST', redirect: 'follow',
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: 'delete_auth_user', empId: id })
+                    });
+                    const result = await response.json();
+                    if(result.status === 'success') {
+                        loadAdminUsers();
+                    } else {
+                        Swal.fire('Error', result.message, 'error');
+                        document.getElementById('admin-loader').classList.add('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('admin-loader').classList.add('hidden');
+            }
+        }
+
+        // ดึงข้อมูลจาก Sheet มาแสดง
+        async function loadAdminUsers() {
+            const tbody = document.getElementById('auth-user-list');
+            const loader = document.getElementById('admin-loader');
+            
+            loader.classList.remove('hidden');
+            
+            try {
+                if(GOOGLE_SCRIPT_URL) {
+                    // ใช้ GET request action=get_auth_users
+                    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=get_auth_users&t=${Date.now()}`);
+                    const result = await response.json();
+                    
+                    if(result.status === 'success') {
+                        renderAdminTable(result.data);
+                    }
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-gray-400">Demo Mode (No Server)</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-red-400">โหลดข้อมูลไม่สำเร็จ</td></tr>`;
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        function renderAdminTable(users) {
+            const tbody = document.getElementById('auth-user-list');
+            document.getElementById('auth-count').innerText = users.length;
+            
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-gray-400">ยังไม่มีข้อมูลใน Sheet</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            // Show latest first (assuming API returns normal order)
+            users.slice().reverse().forEach(u => {
+                const tr = document.createElement('tr');
+                tr.className = "bg-white border-b hover:bg-gray-50";
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-mono font-medium text-blue-800">${u.employeeID}</td>
+                    <td class="px-4 py-3 text-gray-700">${u.Name}</td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="removeAuthorizedUser('${u.employeeID}')" class="text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ==========================================
+        // 📺 VIEW NAVIGATION & VOTING (Updated)
+        // ==========================================
+        function switchView(viewId) {
+            ['view-login', 'view-voting', 'view-summary', 'view-admin'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(viewId).classList.remove('hidden');
+            
+            // Allow view-admin to be a history point so we can return to it from summary
+            if (viewId !== 'view-summary') {
+                lastViewId = viewId;
+            }
+        }
+
+        function toggleSummary() {
+            const summaryView = document.getElementById('view-summary');
+            if (summaryView.classList.contains('hidden')) {
+                switchView('view-summary');
+                loadSummaryData();
+            } else {
+                closeSummary();
+            }
+        }
+
+        function closeSummary() {
+            switchView(lastViewId || 'view-login');
+        }
+
+        async function loadCandidates() {
+            const spinner = document.getElementById('loading-spinner');
+            try {
+                if (GOOGLE_SCRIPT_URL) {
+                    const response = await fetch(GOOGLE_SCRIPT_URL);
+                    const result = await response.json();
+                    if (result.status === 'success') candidatesData = result.data;
+                } else {
+                    await new Promise(r => setTimeout(r, 800));
+                    candidatesData = MOCK_DATA;
+                }
+            } catch (error) { candidatesData = MOCK_DATA; } 
+            finally {
+                spinner.classList.add('hidden');
+                renderCandidates();
+            }
+        }
+
+        async function loadSummaryData() {
+            const container = document.getElementById('summary-list');
+            container.innerHTML = '<div class="flex justify-center py-8 text-blue-200"><div class="loader w-6 h-6 border-2"></div></div>';
+            let data = [];
+            try {
+                if (GOOGLE_SCRIPT_URL) {
+                    const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=summary&t=${Date.now()}`);
+                    const result = await response.json();
+                    if(result.status === 'success' && result.data) data = result.data;
+                } else {
+                    await new Promise(r => setTimeout(r, 600));
+                    data = MOCK_DATA.map(c => ({...c, votes: c.votes || Math.floor(Math.random() * 100)}));
+                }
+            } catch (e) { data = []; }
+            renderSummary(data);
+        }
+
+        function renderCandidates() {
+            const grid = document.getElementById('candidates-grid');
+            grid.innerHTML = '';
+            candidatesData.forEach(c => {
+                const card = document.createElement('div');
+                card.className = `candidate-card bg-yellow-50 rounded-xl shadow-lg p-4 cursor-pointer relative overflow-hidden group flex md:flex-col items-center gap-4 md:gap-2 border-2 border-transparent`;
+                card.onclick = () => selectCandidate(c);
+                card.id = `card-${c.id}`;
+                const imgSrc = c.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random`;
+                card.innerHTML = `
+                    <div class="absolute top-0 left-0 bg-blue-800 text-yellow-50 text-sm font-bold px-3 py-1 rounded-br-xl shadow-sm z-10 border-b border-r border-blue-900">
+                        No. ${c.id}
+                    </div>
+                    <div class="absolute top-2 right-2 check-icon text-blue-700 bg-yellow-200 rounded-full p-1 z-10 shadow-sm"><i class="fas fa-check-circle text-xl"></i></div>
+                    <div class="flex-shrink-0 pt-1 md:pt-4">
+                        <img src="${imgSrc}" alt="${c.name}" class="w-16 h-16 md:w-24 md:h-24 rounded-full object-cover border-2 border-white shadow-md bg-blue-100">
+                    </div>
+                    <div class="flex-grow text-left md:text-center min-w-0">
+                        <h3 class="text-base md:text-lg font-bold text-blue-900 leading-tight truncate pr-6 md:pr-0">${c.name}</h3>
+                        <span class="inline-block mt-1 bg-blue-50 text-blue-600 text-xs px-2 py-0.5 rounded-md truncate max-w-full border border-blue-100 font-medium">${c.dept}</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderSummary(data) {
+            const container = document.getElementById('summary-list');
+            container.innerHTML = '';
+            if (data.length === 0) { container.innerHTML = '<div class="text-center text-blue-400 py-4">ไม่พบข้อมูลคะแนน</div>'; return; }
+            data.sort((a, b) => (b.votes || 0) - (a.votes || 0));
+            const maxVotes = Math.max(...data.map(d => d.votes || 0)) || 1;
+            data.forEach((c, index) => {
+                const voteCount = c.votes || 0;
+                const percent = (voteCount / maxVotes) * 100;
+                const isWinner = index === 0 && voteCount > 0;
+                const item = document.createElement('div');
+                item.className = 'relative';
+                item.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-bold text-blue-400 w-5">#${index + 1}</span>
+                            <span class="font-semibold text-blue-900 text-sm truncate max-w-[150px]">${c.name}</span>
+                        </div>
+                        <span class="text-sm font-bold ${isWinner ? 'text-blue-700' : 'text-gray-500'}">${voteCount} คะแนน</span>
+                    </div>
+                    <div class="w-full bg-blue-100 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-blue-600 h-2.5 rounded-full progress-bar" style="width: 0%"></div>
+                    </div>
+                `;
+                container.appendChild(item);
+                setTimeout(() => {
+                    item.querySelector('.progress-bar').style.width = `${percent}%`;
+                    if(isWinner) {
+                        const bar = item.querySelector('.progress-bar');
+                        bar.classList.remove('bg-blue-600');
+                        bar.classList.add('bg-yellow-500'); 
+                    }
+                }, 100);
+            });
+        }
+
+        function selectCandidate(candidate) {
+            selectedCandidate = candidate;
+            document.querySelectorAll('.candidate-card').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`card-${candidate.id}`).classList.add('selected');
+            const bar = document.getElementById('submit-bar');
+            bar.classList.remove('translate-y-full');
+            document.getElementById('selected-name').innerText = `No.${candidate.id} - ${candidate.name}`;
+        }
+
+        function confirmVote() {
+            if (!selectedCandidate || !currentUser) return;
+            Swal.fire({
+                title: 'ยืนยัน?', text: `คุณเลือก "No.${selectedCandidate.id} ${selectedCandidate.name}"`,
+                icon: 'question', showCancelButton: true, confirmButtonColor: '#1e40af', cancelButtonColor: '#9ca3af',
+                confirmButtonText: 'ใช่, โหวตเลย', reverseButtons: true
+            }).then((result) => { if (result.isConfirmed) submitToBackend(); });
+        }
+
+        async function submitToBackend() {
+            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const payload = { action: 'vote', empId: currentUser, candidateId: selectedCandidate.id };
+            try {
+                if (GOOGLE_SCRIPT_URL) {
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    if (result.status === 'success') finishVoting(true);
+                    else if (result.status === 'duplicate') Swal.fire('ผิดพลาด', 'คุณเคยโหวตไปแล้ว', 'error');
+                    else throw new Error(result.message);
+                } else {
+                    await new Promise(r => setTimeout(r, 1000));
+                    finishVoting(true);
+                }
+            } catch (error) {
+                if (GOOGLE_SCRIPT_URL) Swal.fire('เชื่อมต่อไม่ได้', 'กรุณาลองใหม่อีกครั้ง', 'error');
+                else finishVoting(true); 
+            }
+        }
+
+        function finishVoting(success) {
+            if (success) {
+                localStorage.setItem(`voted_${currentUser}`, 'true');
+                document.getElementById('submit-bar').classList.add('translate-y-full');
+                document.getElementById('view-voting').innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-16 px-4 fade-in text-center h-full">
+                        <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6"><i class="fas fa-check text-4xl text-blue-800"></i></div>
+                        <h2 class="text-2xl font-bold text-yellow-50 mb-2">บันทึกเรียบร้อย</h2>
+                        <p class="text-blue-200 mb-8">ขอบคุณสำหรับการโหวต</p>
+                        <div class="w-full max-w-xs bg-yellow-50 p-4 rounded-xl shadow-lg border border-blue-800 flex items-center space-x-3 mx-auto">
+                            <div class="flex-shrink-0 font-bold text-xl text-blue-300 mr-2">#${selectedCandidate.id}</div>
+                            <img src="${selectedCandidate.img || 'https://via.placeholder.com/50'}" class="w-12 h-12 rounded-full bg-gray-200 object-cover border border-blue-200">
+                            <div class="text-left overflow-hidden">
+                                <p class="text-sm text-gray-500">คุณเลือก</p>
+                                <p class="font-bold text-blue-900 truncate">${selectedCandidate.name}</p>
+                            </div>
+                        </div>
+                        <button onclick="location.reload()" class="mt-12 text-blue-300 hover:text-white transition text-sm flex items-center"><i class="fas fa-redo mr-2"></i> กลับหน้าหลัก</button>
+                    </div>
+                `;
+                Swal.close();
+            }
+        }
+    </script>
+</body>
+</html>
